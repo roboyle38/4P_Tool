@@ -1,120 +1,330 @@
+"""
+reporter.py
+
+Formatting and table-building utilities for the 4P assay tool.
+
+This module is **presentation-only**:
+- Takes numeric / structured results from `analysis.py`
+- Builds dicts that describe tables: {"headers": [...], "rows": [[...], ...]}
+- Helps populate Qt `QTableWidget` instances from those dicts
+"""
+
 from helpers.helper_fnx import cv_calc
-from analysis import run_analysis
-from model_4pl import fit_4pl, four_pl, concentration_from_signal
+from PySide6.QtWidgets import QTableWidgetItem
 
 
-# need to add to table a column indicating whether the sample is within range.
+
+
+# ===================================================================
+# Unknown samples table
+# ===================================================================
+
 def unknown_table(results):
+    """
+    Build a table-dict summarizing unknown sample concentrations.
+
+    Parameters
+    ----------
+    results : dict
+        Mapping sample_id -> {
+            "replicate_concentrations": [float, ...],
+            "mean_concentration": float,
+        }
+
+    Returns
+    -------
+    dict
+        {
+          "headers": ["Sample ID", "N Reps", "Mean", "CV%", "Min", "Max"],
+          "rows": [
+            [sample_id, n_reps, mean, cv, min_val, max_val],
+            ...
+          ]
+        }
+    """
     table_rows = []
     for sample_id, info in results.items():
-        n_reps = len(info['replicate_concentrations'])
+        reps = info["replicate_concentrations"]
+        n_reps = len(reps)
         mean = round(info["mean_concentration"], 1)
-        cv = round(cv_calc(info['replicate_concentrations']), 1)
-        minimum = round(min(info['replicate_concentrations']), 1)
-        maximum = round(max(info['replicate_concentrations']), 1)
-        table_rows.append([sample_id, int(n_reps), float(mean), float(cv), float(minimum), float(maximum)])
-    table_dict = { "headers" : ["Sample ID", "N Reps", "Mean", "CV%", "Min", "Max"], 
-                    "rows": table_rows}
+        cv = round(cv_calc(reps), 1)
+        minimum = round(min(reps), 1)
+        maximum = round(max(reps), 1)
+
+        table_rows.append([
+            sample_id,
+            int(n_reps),
+            float(mean),
+            float(cv),
+            float(minimum),
+            float(maximum),
+        ])
+
+    table_dict = {
+        "headers": ["Sample ID", "N Reps", "Mean", "CV%", "Min", "Max"],
+        "rows": table_rows,
+    }
     return table_dict
 
-def calibration_table(calibration_groups, A, B, C, D, units = "ng/mL"):
-    # | Level | Nominal Conc | Mean Signal | CV% (Signal) | Back-Calc Conc | % Recovery |
-    
+
+# ===================================================================
+# Calibration table (formatting only – stats come from analysis.py)
+# ===================================================================
+
+def calibration_table(calibration_stats):
+    """
+    Build a table-dict summarizing calibration performance.
+
+    Parameters
+    ----------
+    calibration_stats : dict Mapping calibrator_id -> 
+        {
+            "level": float,
+            "n_reps": int,
+            "mean_signal": float,
+            "cv": float,
+            "back_calc": float or None,
+            "percent_recovery": float or None,
+        }
+
+    Returns
+    -------
+    dict
+        {
+          "headers": [...],
+          "rows": [[...], ...]
+        }
+    """
+    headers = [
+        "Calibrator ID",
+        "Level",
+        "N Reps",
+        "Signal Mean",
+        "CV%",
+        "Concentration Average",
+        "% Recovery",
+    ]
+
     table_rows = []
-    for calibrator_id, info in calibration_groups.items():
-        level = round(info["concentration"], 2)
-        #units???
-        n_reps = len(info["signals"])
-        signal_mean = round(sum(info["signals"]) / len(info["signals"]), 4)
-        cv = round(cv_calc(info["signals"]), 2)
-        if level == 0:
-            back_calc = "---"
-            percent_recovery = "---"
+
+    for calibrator_id, stats in calibration_stats.items():
+        level            = stats["level"]
+        n_reps           = stats["n_reps"]
+        mean_signal      = stats["mean_signal"]
+        cv               = stats["cv"]
+        back_calc        = stats["back_calc"]
+        percent_recovery = stats["percent_recovery"]
+
+        # Display-only formatting
+        level_disp = round(level, 2) if level is not None else "---"
+        mean_disp  = round(mean_signal, 4) if mean_signal is not None else "---"
+        cv_disp    = round(cv, 2) if cv is not None else "---"
+
+        if back_calc is None or percent_recovery is None:
+            back_disp = "---"
+            rec_disp  = "---"
         else:
-            back_calc = float(round(concentration_from_signal(signal_mean, A, B, C, D), 2))
-            percent_recovery = float(round((back_calc / level) * 100, 1))            
-        table_rows.append([calibrator_id, 
-                           float(level), 
-                           int(n_reps), 
-                           float(signal_mean), 
-                           float(cv), 
-                           back_calc, 
-                           percent_recovery])
-        # % recovery
-        table_dict = {"headers" : ["Calibrator ID", 
-                    f"Level ({units})", 
-                    "N Reps", 
-                    "Signal Mean", 
-                    "CV%", 
-                    "Concentration Average", 
-                    "% Recovery"], 
-                    "rows": table_rows
-                      }
-        
+            back_disp = round(back_calc, 2)
+            rec_disp  = round(percent_recovery, 1)
+
+        table_rows.append([
+            calibrator_id,
+            level_disp,
+            n_reps,
+            mean_disp,
+            cv_disp,
+            back_disp,
+            rec_disp,
+        ])
+
+    return {
+        "headers": headers,
+        "rows": table_rows,
+    }
+
+
+# ===================================================================
+# Generic helper: dict -> QTableWidget
+# ===================================================================
+
+def fill_table_widget(table_widget, data_table):
+    """
+    Populate a QTableWidget from a table-dict.
+
+    Parameters
+    ----------
+    table_widget : QTableWidget
+        The Qt table widget to fill.
+    data_table : dict
+        {
+          "headers": [...],
+          "rows": [[...], ...]
+        }
+    """
+    headers = data_table["headers"]
+    rows = data_table["rows"]
+
+    table_widget.setColumnCount(len(headers))
+    table_widget.setHorizontalHeaderLabels(headers)
+
+    table_widget.setRowCount(len(rows))
+    for r_idx, row in enumerate(rows):
+        for c_idx, value in enumerate(row):
+            table_widget.setItem(r_idx, c_idx, QTableWidgetItem(str(value)))
+
+
+# ===================================================================
+# LOQ determination (based on formatted calibration table)
+# ===================================================================
+
+def determine_loq(cal_table_dict):
+    """
+    Derive estimated LLOQ and ULOQ from a *formatted* calibration table.
+
+    Rule (configurable later):
+      - ignore level == 0
+      - CV% < 20
+      - 80 < % Recovery < 120
+
+    Parameters
+    ----------
+    cal_table_dict : dict
+        The same dict you would pass to fill_table_widget() for the
+        calibration table.
+
+    Returns
+    -------
+    tuple
+        (uloq, lloq) where each is a float or None.
+    """
+    passing_levels = []
+
+    headers = cal_table_dict["headers"]
+    level_idx = headers.index("Level")
+    cv_idx = headers.index("CV%")
+    rec_idx = headers.index("% Recovery")
+
+    for row in cal_table_dict["rows"]:
+        if row[level_idx] == 0:
+            continue
+        if row[cv_idx] < 20 and 80 < row[rec_idx] < 120:
+            passing_levels.append(row)
+
+    levels = [row[level_idx] for row in passing_levels]
+
+    if len(levels) > 0:
+        uloq = max(levels)
+        lloq = min(levels)
+    else:
+        uloq = None
+        lloq = None
+
+    return uloq, lloq
+
+
+# ===================================================================
+# Unknown status column (ND / Below LOQ / Above LOQ / In Range)
+# ===================================================================
+
+def add_unknown_status_column(unknown_table_dict, lloq, uloq):
+    """
+    Placeholder definition (overridden by the implementation below).
+
+    Kept for compatibility with your original file layout.
+    """
+    pass
+
+
+def params_table_builder(A, B, C, D, uloq=None, lloq=None, r2 = None, sse = None, residual_sd = None):
+    """
+    Build the parameter table (4PL params + optional LOQs).
+
+    Parameters
+    ----------
+    A, B, C, D : float
+        4PL parameters.
+    uloq, lloq : float or None
+        Estimated LOQs from LOQ determination.
+
+    Returns
+    -------
+    dict
+        {
+          "headers": ["Parameter", "Value"],
+          "rows": [[name, value], ...]
+        }
+    """
+    table_dict = {
+        "headers": ["Parameter", "Value"],
+        "rows": [
+            ["A (Low)",   round(A, 4)],
+            ["B (Slope)", round(B, 4)],
+            ["C (EC50)",  round(C, 4)],
+            ["D (High)",  round(D, 4)],
+        ],
+    }
+
+    rows = table_dict["rows"]
+
+    if lloq is not None:
+        rows.append(["Estimated LLOQ", lloq])
+    if uloq is not None:
+        rows.append(["Estimated ULOQ", uloq])
+    if r2 is not None:
+        rows.append(["R²", round(r2, 4)])
+    if sse is not None:
+        rows.append(["SSE", round(sse, 4)])
+    if residual_sd is not None:
+        rows.append(["Residual SD", round(residual_sd, 4)])
+
     return table_dict
 
-"""({'CAL_00': {'concentration': 0.0, 'signals': [0.018, 0.017, 0.019]}, 
-'CAL_05': {'concentration': 0.5, 'signals': [0.032, 0.031, 0.035]}, 
-'CAL_10': {'concentration': 1.0, 'signals': [0.051, 0.049, 0.053]}, 
-'CAL_20': {'concentration': 2.0, 'signals': [0.088, 0.091, 0.087]}, 
-'CAL_40': {'concentration': 4.0, 'signals': [0.145, 0.152, 0.149]}, 
-'CAL_80': {'concentration': 8.0, 'signals': [0.255, 0.262, 0.249]}, 
-'CAL_160': {'concentration': 16.0, 'signals': [0.445, 0.438, 0.461]}, 
-'CAL_320': {'concentration': 32.0, 'signals': [0.76, 0.742, 0.771]}, 
-'CAL_640': {'concentration': 64.0, 'signals': [1.115, 1.089, 1.124]}, 
-'CAL_1280': {'concentration': 128.0, 'signals': [1.574, 1.602, 1.547]}, 
-'CAL_2560': {'concentration': 256.0, 'signals': [1.942, 2.015, 1.983]}, 
-'CAL_5120': {'concentration': 512.0, 'signals': [2.21, 2.185, 2.198]}}"""
 
+# Adding status column for unknowns based on LOQs
+def add_unknown_status_column(unknown_table_dict, lloq, uloq):
+    """
+    Append a 'Status' column to the unknown table-dict.
 
+    Status rules
+    ------------
+    - If mean is NaN/None      -> "ND"
+    - If mean < LLOQ           -> "Below LOQ"
+    - If mean > ULOQ           -> "Above LOQ"
+    - Otherwise                -> "In Range"
 
-#from ChatGPT - get rid of later
-def print_table(table):
-    headers = table["headers"]
-    rows = table["rows"]
+    Parameters
+    ----------
+    unknown_table_dict : dict
+        Table dict from unknown_table().
+    lloq, uloq : float or None
+        Estimated LOQ bounds.
 
-    # Convert everything to strings for sizing and printing
-    rows_str = [[str(x) for x in row] for row in rows]
-    headers_str = [str(h) for h in headers]
+    Returns
+    -------
+    dict
+        Same dict object, with:
+          - headers += ["Status"]
+          - each row extended with status string
+    """
+    MEAN_IDX = 2  # index of "Mean" in each row
 
-    # Compute column widths
-    col_widths = []
-    for col_idx in range(len(headers_str)):
-        column_items = [headers_str[col_idx]] + [row[col_idx] for row in rows_str]
-        max_width = max(len(item) for item in column_items)
-        col_widths.append(max_width)
+    unknown_table_dict["headers"].append("Status")
 
-    # Build format string: left align first column, right align numbers
-    fmt = " | ".join("{:<" + str(w) + "}" for w in col_widths)
+    new_rows = []
+    for row in unknown_table_dict["rows"]:
+        mean_val = row[MEAN_IDX]
 
-    # Print header
-    print(fmt.format(*headers_str))
+        # NaN check: (mean_val != mean_val) is True only for NaN
+        if mean_val is None or mean_val != mean_val:
+            status = "ND"
+        elif lloq is not None and mean_val < lloq:
+            status = "Below LOQ"
+        elif uloq is not None and mean_val > uloq:
+            status = "Above LOQ"
+        else:
+            status = "In Range"
 
-    # Print separator
-    print("-" * (sum(col_widths) + 3 * (len(col_widths) - 1)))
+        new_rows.append(row + [status])
 
-    # Print each row
-    for row in rows_str:
-        print(fmt.format(*row))
-
-
-if __name__ == "__main__":
-    # TEMPORARY DEBUGGING BLOCK
-    from analysis import run_analysis
-    
-    filepath = "/Users/robertboyle/Desktop/Python/Projects/4P_Tool/assets/sample_data/Assay_dataset_2.csv"
-    """# We get results EXACTLY like main.py does
-    (
-        _x, _y,
-        A, B, C, D,
-        unk_rep_x, unk_rep_y,
-        unk_mean_x, unk_mean_y,
-        results, calibration_groups
-    ) = run_analysis(filepath)
-
-    # Now test the reporter
-    #table = unknown_table(results)
-    #print_table(table)
-    #cal_table = calibration_table(calibration_groups, A, B, C, D)
-    #print(cal_table)
-    print("\nDEBUG TABLE:\n", table)"""
+    unknown_table_dict["rows"] = new_rows
+    return unknown_table_dict

@@ -1,0 +1,106 @@
+4P Tool Requirements
+    Level 0 (completed)
+        - Created project directory
+        - Created Python files
+        - GUI framework (PyQT) basics
+        - File input / CSV loading
+        - internal data structures
+        - basic math helpers
+        - plotting infrastructure
+    Level 1
+        -LLOQ/ULOQ Detection
+            If you want, next step could be:
+	        •	Define a super simple rule set for “curve-based LOQ from CALs” and
+	        •	DO LATER - Sketch how you’d extend it later to QC/matrix roles in the same framework.
+        -Out-of-range flagging
+        - Model diagnostics summary
+            - R**2 
+            - SSE
+            - Residual SD
+        - Save enhanced CSV
+            - User loads raw CSV
+            - Your tool generates an exported CSV containing:
+                - Raw Data
+                - Mean, CV%, min, max
+                - 4PL calculated concentrations
+                - Flags
+
+    Step 2
+        - Weighted regression
+        - Real LLOQ / ULOQ based on precision
+        - Replicate outlier Detection
+        - Residual diagnostics plots - Add:
+            - A simple residual vs. concentration plots
+            - residual vs. fitted value
+            - Test summary: mean residual, SD, maybe a normality assumption check later
+        - Hook effect Detection
+        -Robustness checks/ Leave-one-out re-fitting
+        - Better visualization
+            - Allow toggling:
+                - Log vs linear x-axis
+                - Show/hide unknowns
+                - Show/hide rejected outlier replicates
+            - Add subtle visual hints
+                - Different markers for flagged points
+                - Shaded region between LLOQ and ULOQ
+
+        Step 3
+            - Multi-page GUI
+                -Add distinct sections
+                    -Calibration curve showing raw points, fit, diagnostics
+                    - unknowns
+                    - Diagnostics
+                    - QC / Validation
+                    - Export - PDF generation/ enhanced CSV export
+            - Session management (Save/load sessions)
+            - Let users save and reopen an analysiss
+            - PDF report generation (high importance requirement)
+                	•	Calibration curve plot
+                    •	Table of A/B/C/D parameters
+                    •	Goodness-of-fit
+                    •	Unknown table
+                    •	Flags
+                    •	LLOQ/ULOQ
+                    •	Outlier replicates
+                    •	QC results
+
+
+
+
+Project status - 02Dec25
+
+Five layers:
+
+[ GUI layer ]           ->  main_window.MainWindow
+[ Plotting layer ]      ->  plotter.plot_full_calibration
+[ Reporting/Formatting] ->  reporter.*
+[ Analysis layer ]      ->  analysis.run_analysis
+[ Data/Math layer ]     ->  data_loader, model_4pl, helper_fnx
+
+One-page mental picture:
+
+User click "Load CSV"
+        ↓
+MainWindow.open_csv
+
+        ↓ calls
+
+run_analysis(filepath)
+        ↓
+  load_assay_csv → x_axis, y_axis, unknown_groups, calibration_groups
+        ↓
+  fit_4pl        → A,B,C,D
+        ↓
+  compute unknown concs → results, unk_rep_x/y, unk_mean_x/y
+        ↓
+  make calibration_stats + (LLOQ, ULOQ)
+        ↓
+  return everything
+        ↓
+MainWindow:
+  - saves to self.*
+  - plot_full_calibration(...)        → plot
+  - unknown_table + add_unknown_status → unknown table
+  - calibration_table                  → calibration table
+  - params_table_builder               → params table
+

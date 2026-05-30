@@ -41,3 +41,23 @@ def fit_4pl(x,y):
     #popt = best fit for A, B, C, D
     #pcov = covariance matrix
     return A, B, C, D
+
+# Generic R2 calculation - ADDED ON 24MAY26
+# Note to remember - numpy is running a loop on every element in the array
+
+def model_diagnostics(x, y, A, B, C, D):
+    x = np.array(x, dtype=float)
+    y = np.array(y, dtype=float)
+
+    y_pred = four_pl(x, A, B, C, D)
+    y_mean = np.mean(y)
+
+    residuals = y - y_pred
+    ss_res = np.sum(residuals ** 2)
+    ss_tot = np.sum((y - y_mean) ** 2)
+
+    r2 = 1 - (ss_res / ss_tot)
+    sse = ss_res
+    residual_sd = np.std(residuals, ddof=1)
+
+    return r2, sse, residual_sd

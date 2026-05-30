@@ -1,0 +1,40 @@
+4P Assay Tool Export
+Generated:,2026-05-26 21:15
+
+--- Model Parameters ---
+Parameter,Value
+A (Low),2.6895
+B (Slope),1.2642
+C (EC50),43.084
+D (High),0.026
+R²,0.9642
+SSE,2.7113
+Residual SD,0.2241
+Estimated LLOQ,10.0
+Estimated ULOQ,1000.0
+
+--- Unknown Samples ---
+Sample ID,N Reps,Mean,CV%,Min,Max,Status
+S1,5,nan,nan,nan,nan,ND
+S2,5,nan,nan,nan,nan,ND
+S3,5,6.4,85.0,1.9,15.2,Below LOQ
+S4,5,26.1,12.7,22.8,31.7,In Range
+S5,5,79.7,5.2,73.3,83.8,In Range
+S6,5,286.0,3.1,275.6,295.3,In Range
+S7,5,1183.0,4.2,1104.8,1234.6,Above LOQ
+S8,5,18362.5,92.8,9588.6,48778.4,Above LOQ
+
+--- Calibrators ---
+Calibrator ID,Level,N Reps,Signal Mean,CV%,Concentration Average,% Recovery
+CAL_0000,0.0,5,3.0571,12.97,---,---
+CAL_00001,0.1,5,3.0225,13.96,nan,nan
+CAL_00003,0.3,5,2.4094,16.89,7.92,2639.8
+CAL_0001,1.0,5,2.5492,7.77,4.38,438.2
+CAL_0003,3.0,5,2.658,6.91,1.3,43.2
+CAL_0010,10.0,5,2.3305,2.21,9.9,99.0
+CAL_0030,30.0,5,1.6561,2.98,30.04,100.1
+CAL_0100,100.0,5,0.7017,2.17,101.16,101.2
+CAL_0300,300.0,5,0.2464,1.69,288.88,96.3
+CAL_1000,1000.0,5,0.0767,2.17,974.08,97.4
+CAL_3000,3000.0,5,0.0357,1.39,3658.64,122.0
+CAL_6000,6000.0,5,0.0284,12.96,11012.66,183.5
