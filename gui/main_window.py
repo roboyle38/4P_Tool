@@ -147,9 +147,9 @@ class MainWindow(QMainWindow):
             self.residual_vs_fitted_canvas = FigureCanvas(self.residual_vs_fitted_figure)
             self.tab3_layout.addWidget(self.residual_vs_fitted_canvas)
             self.tabs.addTab(self.tab3, "Residual vs Fitted Plot")
-
             self.layout.addWidget(self.tabs)
 
+            self.data_tabs = QTabWidget()
             self.unknown_table = QTableWidget()
             header = self.unknown_table.horizontalHeader()
             header.setSectionResizeMode(QHeaderView.Stretch)
@@ -161,7 +161,8 @@ class MainWindow(QMainWindow):
             self.unknown_table.setHorizontalHeaderLabels(
                 ["Sample ID", "N Reps", "Mean", "CV%", "Min", "Max"]
             )
-            self.layout.addWidget(self.unknown_table)
+            # self.layout.addWidget(self.unknown_table)
+            self.data_tabs.addTab(self.unknown_table, "Unknown Samples")
 
             self.calibration_data_table = QTableWidget()
             header = self.calibration_data_table.horizontalHeader()
@@ -170,11 +171,15 @@ class MainWindow(QMainWindow):
             font = self.calibration_data_table.font()
             font.setPointSize(9)
             self.calibration_data_table.setFont(font)
-            self.layout.addWidget(self.calibration_data_table)
+            # self.layout.addWidget(self.calibration_data_table)
+            self.data_tabs.addTab(self.calibration_data_table, "Calibrators")
 
+            self.layout.addWidget(self.data_tabs)
             self.layout.setStretchFactor(self.tabs, 3)
-            self.layout.setStretchFactor(self.unknown_table, 1)
-            self.layout.setStretchFactor(self.calibration_data_table, 1)
+            # self.layout.setStretchFactor(self.unknown_table, 1)
+            # self.layout.setStretchFactor(self.calibration_data_table, 1)
+
+            self.layout.setStretchFactor(self.data_tabs, 2)
 
     # -----------------------------------------------------------------------
     # UI handlers
