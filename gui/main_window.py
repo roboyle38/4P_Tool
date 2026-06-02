@@ -138,7 +138,7 @@ class MainWindow(QMainWindow):
             self.tabs.addTab(self.tab2, "Residual Plot")
 
             #Add 3rd tab for fitted v residuals
-            # referred to as residual_2
+    
 
             self.tab3 = QWidget()
             self.tab3_layout = QVBoxLayout()
@@ -150,6 +150,7 @@ class MainWindow(QMainWindow):
             self.layout.addWidget(self.tabs)
 
             self.data_tabs = QTabWidget()
+
             self.unknown_table = QTableWidget()
             header = self.unknown_table.horizontalHeader()
             header.setSectionResizeMode(QHeaderView.Stretch)
@@ -157,9 +158,9 @@ class MainWindow(QMainWindow):
             font = self.unknown_table.font()
             font.setPointSize(9)
             self.unknown_table.setFont(font)
-            self.unknown_table.setColumnCount(6)
+            self.unknown_table.setColumnCount(7)
             self.unknown_table.setHorizontalHeaderLabels(
-                ["Sample ID", "N Reps", "Mean", "CV%", "Min", "Max"]
+                ["Sample ID", "N Reps", "Mean", "CV%", "Min", "Max", "Outliers"]
             )
             # self.layout.addWidget(self.unknown_table)
             self.data_tabs.addTab(self.unknown_table, "Unknown Samples")
@@ -171,13 +172,11 @@ class MainWindow(QMainWindow):
             font = self.calibration_data_table.font()
             font.setPointSize(9)
             self.calibration_data_table.setFont(font)
-            # self.layout.addWidget(self.calibration_data_table)
             self.data_tabs.addTab(self.calibration_data_table, "Calibrators")
 
             self.layout.addWidget(self.data_tabs)
             self.layout.setStretchFactor(self.tabs, 3)
-            # self.layout.setStretchFactor(self.unknown_table, 1)
-            # self.layout.setStretchFactor(self.calibration_data_table, 1)
+
 
             self.layout.setStretchFactor(self.data_tabs, 2)
 
@@ -254,10 +253,12 @@ class MainWindow(QMainWindow):
                 sse,
                 residual_sd,
                 x_all_reps,
-                y_all_reps
+                y_all_reps,
+                cal_outliers,
+                sample_outliers
             ) = run_analysis(filepath)
 
-
+     
             # ---------------------------------------------------------------
             # 2) Update plot (4PL curve + unknowns)
             # ---------------------------------------------------------------
@@ -312,11 +313,13 @@ class MainWindow(QMainWindow):
             self.r2 = r2
             self.sse = sse
             self.residual_sd = residual_sd
+            self.cal_outliers = cal_outliers
+            self.sample_outliers = sample_outliers
 
             # -----------------------------------------------------------
             # 3) Unknown table (with LOQ-based status)
             # -----------------------------------------------------------
-            unknown_data_table = unknown_table(results)
+            unknown_data_table = unknown_table(results, sample_outliers)
             unknown_data_table = add_unknown_status_column(
                 unknown_data_table, lloq, uloq
             )
@@ -326,7 +329,7 @@ class MainWindow(QMainWindow):
             # -----------------------------------------------------------
             # 4) Calibration table (formatted from calibration_stats)
             # -----------------------------------------------------------
-            calibration_table_dict = calibration_table(calibration_stats)
+            calibration_table_dict = calibration_table(calibration_stats, cal_outliers)
             self.calibration_table_dict = calibration_table_dict
             fill_table_widget(self.calibration_data_table, calibration_table_dict)
 

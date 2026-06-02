@@ -19,7 +19,7 @@ from PySide6.QtWidgets import QTableWidgetItem
 # Unknown samples table
 # ===================================================================
 
-def unknown_table(results):
+def unknown_table(results, sample_outliers):
     """
     Build a table-dict summarizing unknown sample concentrations.
 
@@ -35,9 +35,9 @@ def unknown_table(results):
     -------
     dict
         {
-          "headers": ["Sample ID", "N Reps", "Mean", "CV%", "Min", "Max"],
+          "headers": ["Sample ID", "N Reps", "Mean", "CV%", "Min", "Max", "Outliers"],
           "rows": [
-            [sample_id, n_reps, mean, cv, min_val, max_val],
+            [sample_id, n_reps, mean, cv, min_val, max_val, outliers],
             ...
           ]
         }
@@ -50,6 +50,8 @@ def unknown_table(results):
         cv = round(cv_calc(reps), 1)
         minimum = round(min(reps), 1)
         maximum = round(max(reps), 1)
+        outliers = sample_outliers.get(sample_id, [])
+        outlier_display = "---" if len(outliers) == 0 else str(outliers)
 
         table_rows.append([
             sample_id,
@@ -58,10 +60,12 @@ def unknown_table(results):
             float(cv),
             float(minimum),
             float(maximum),
+            outlier_display
         ])
+    
 
     table_dict = {
-        "headers": ["Sample ID", "N Reps", "Mean", "CV%", "Min", "Max"],
+        "headers": ["Sample ID", "N Reps", "Mean", "CV%", "Min", "Max", "Outliers"],
         "rows": table_rows,
     }
     return table_dict
@@ -71,7 +75,7 @@ def unknown_table(results):
 # Calibration table (formatting only – stats come from analysis.py)
 # ===================================================================
 
-def calibration_table(calibration_stats):
+def calibration_table(calibration_stats, cal_outliers):
     """
     Build a table-dict summarizing calibration performance.
 
@@ -85,6 +89,7 @@ def calibration_table(calibration_stats):
             "cv": float,
             "back_calc": float or None,
             "percent_recovery": float or None,
+            "Outliers" : list
         }
 
     Returns
@@ -103,17 +108,20 @@ def calibration_table(calibration_stats):
         "CV%",
         "Concentration Average",
         "% Recovery",
+        "Outliers"
     ]
 
     table_rows = []
 
     for calibrator_id, stats in calibration_stats.items():
-        level            = stats["level"]
-        n_reps           = stats["n_reps"]
-        mean_signal      = stats["mean_signal"]
-        cv               = stats["cv"]
-        back_calc        = stats["back_calc"]
-        percent_recovery = stats["percent_recovery"]
+        level               = stats["level"]
+        n_reps              = stats["n_reps"]
+        mean_signal         = stats["mean_signal"]
+        cv                  = stats["cv"]
+        back_calc           = stats["back_calc"]
+        percent_recovery    = stats["percent_recovery"]
+        calibration_outliers = cal_outliers.get(calibrator_id, {}).get("outliers", [])
+        cal_outlier_display = "---" if len(calibration_outliers) == 0 else str(calibration_outliers)
 
         # Display-only formatting
         level_disp = round(level, 2) if level is not None else "---"
@@ -135,6 +143,7 @@ def calibration_table(calibration_stats):
             cv_disp,
             back_disp,
             rec_disp,
+            cal_outlier_display
         ])
 
     return {

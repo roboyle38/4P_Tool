@@ -13,7 +13,8 @@ Responsibilities:
 
 from data_loader import load_assay_csv
 from model_4pl import fit_4pl, four_pl, concentration_from_signal, model_diagnostics
-from helpers.helper_fnx import sd_calc, cv_calc  # sd_calc unused currently, but kept
+from helpers.helper_fnx import sd_calc, cv_calc, grubbs_esd  # sd_calc unused currently, but kept
+
 
 
 # ---------------------------------------------------------------------------
@@ -196,7 +197,28 @@ def run_analysis(filepath):
         uloq = None
 
     # -----------------------------------------------------------------------
-    # 6) Return everything the GUI / reporter needs
+    # 6) Outliers
+    # -----------------------------------------------------------------------
+    
+    cal_outliers = {}
+    for calib_id, info in calibration_groups.items():
+        level = info["concentration"]
+        signals = info["signals"]
+
+        outliers_test = grubbs_esd(signals)
+
+        cal_outliers[calib_id] = {
+            "level" : level,
+            "outliers" : outliers_test
+        }
+    sample_outliers = {}
+    for sample_id, info in unknown_groups.items():
+        signals = info["signals"]
+        outliers_test = grubbs_esd(signals)
+        sample_outliers[sample_id] = outliers_test
+
+    # -----------------------------------------------------------------------
+    # 7) Return everything the GUI / reporter needs
     # -----------------------------------------------------------------------
     return (
         x_axis,
@@ -213,6 +235,9 @@ def run_analysis(filepath):
         sse,
         residual_sd,
         x_all_reps,
-        y_all_reps
+        y_all_reps,
+        cal_outliers,
+        sample_outliers
 
     )
+
