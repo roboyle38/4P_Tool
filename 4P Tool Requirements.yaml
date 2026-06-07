@@ -62,7 +62,20 @@
                     •	Flags
                     •	LLOQ/ULOQ
                     •	Outlier replicates
-                    •	QC results
+                    •	Outlier replicates
+                    
+          
+
+Method Validation Package (new module):
+
+LOB, LOD, LOQ (EP17)
+Linearity (EP06)
+Repeatability / Reproducibility (EP05)
+Parallelism
+Dilution linearity
+Multi-lot comparison
+Curve acceptance criteria
+Hook effect      
 
 
 

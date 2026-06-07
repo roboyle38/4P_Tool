@@ -27,7 +27,8 @@ def plot_full_calibration(
     unk_mean_x,
     unk_mean_y,
     lloq,
-    uloq
+    uloq,
+    log_scale = True
 ):
     """
     Draw the fitted 4PL curve and unknowns into a Qt-embedded Matplotlib canvas.
@@ -72,7 +73,11 @@ def plot_full_calibration(
 
     # Fitted 4PL curve
     ax.plot(smooth_x, smooth_y)
-    ax.set_xscale("log")
+    if log_scale:
+        ax.set_xscale("log")
+    else:
+        ax.set_xscale("linear")
+        
     ax.set_xlabel("Concentration")
     ax.set_ylabel("Signal")
 

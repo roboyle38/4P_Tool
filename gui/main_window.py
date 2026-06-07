@@ -45,7 +45,8 @@ from PySide6.QtWidgets import (
     QPushButton,
     QHeaderView,
     QSplitter,
-    QTabWidget
+    QTabWidget,
+    QCheckBox
 )
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QAction
@@ -53,6 +54,7 @@ from matplotlib.backends.backend_qtagg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.figure import Figure
 from plotter import plot_full_calibration
 from model_4pl import four_pl
+from pdf_reporter import generate_pdf
 import numpy as np
 from helpers.helper_fnx import cv_calc
 from reporter import (
@@ -103,11 +105,17 @@ class MainWindow(QMainWindow):
             self.layout.addWidget(self.status_label)
             self.statusBar().showMessage("Ready")
 
+
+            # Button row
             self.button_row = QHBoxLayout()
             self.load_csv = QPushButton("Load CSV")
             self.clear_button = QPushButton("Clear Plot")
+            self.log_scale_checkbox = QCheckBox("Log Scale")
+            self.log_scale_checkbox.setChecked(True) # Log scale on by default
             self.button_row.addWidget(self.load_csv)
             self.button_row.addWidget(self.clear_button)
+            self.button_row.addWidget(self.log_scale_checkbox)
+            self.log_scale_checkbox.stateChanged.connect(self.on_scale_toggled)
             self.layout.addLayout(self.button_row)
 
             self.load_csv.clicked.connect(self.open_csv)
@@ -138,8 +146,6 @@ class MainWindow(QMainWindow):
             self.tabs.addTab(self.tab2, "Residual Plot")
 
             #Add 3rd tab for fitted v residuals
-    
-
             self.tab3 = QWidget()
             self.tab3_layout = QVBoxLayout()
             self.tab3.setLayout(self.tab3_layout)
@@ -189,6 +195,20 @@ class MainWindow(QMainWindow):
         self.canvas.draw()
         self.statusBar().showMessage("Plot cleared", 3000)
 
+    def on_scale_toggled(self):          # ← add here
+        if hasattr(self, "x_axis"):
+            plot_full_calibration(
+                self.figure,
+                self.canvas,
+                self.x_axis,
+                self.y_axis,
+                self.A, self.B, self.C, self.D,
+                self.unk_rep_x, self.unk_rep_y,
+                self.unk_mean_x, self.unk_mean_y,
+                self.LLOQ, self.ULOQ,
+                log_scale=self.log_scale_checkbox.isChecked()
+        )
+
     def _create_menus(self):
         """Create the menubar and its actions."""
         menubar = self.menuBar()
@@ -205,6 +225,11 @@ class MainWindow(QMainWindow):
         export_action = QAction("Export CSV", self)
         export_action.triggered.connect(self.export_csv)
         file_menu.addAction(export_action)
+
+        # Create PDF Report
+        pdf_action = QAction("Export PDF Report", self)
+        pdf_action.triggered.connect(self.export_pdf) # export_pdf <-- handler method
+        file_menu.addAction(pdf_action)
 
         # Quit
         quit_action = QAction("Quit", self)
@@ -255,7 +280,8 @@ class MainWindow(QMainWindow):
                 x_all_reps,
                 y_all_reps,
                 cal_outliers,
-                sample_outliers
+                sample_outliers,
+                unknown_groups
             ) = run_analysis(filepath)
 
      
@@ -273,7 +299,8 @@ class MainWindow(QMainWindow):
                 unk_mean_x,
                 unk_mean_y,
                 lloq,
-                uloq
+                uloq,
+                log_scale = self.log_scale_checkbox.isChecked()
             )
 
 
@@ -315,6 +342,7 @@ class MainWindow(QMainWindow):
             self.residual_sd = residual_sd
             self.cal_outliers = cal_outliers
             self.sample_outliers = sample_outliers
+            self.unknown_groups = unknown_groups
 
             # -----------------------------------------------------------
             # 3) Unknown table (with LOQ-based status)
@@ -364,3 +392,32 @@ class MainWindow(QMainWindow):
                 self.calibration_table_dict,
             )
             self.statusBar().showMessage("Exported to " + filepath, 5000)
+
+    def export_pdf(self):
+        if not hasattr(self, "results"):
+            self.statusBar().showMessage("No data loaded yet.", 3000)
+            return
+
+        filepath, _ = QFileDialog.getSaveFileName(
+            self,
+            "Export PDF Report",
+            "",
+            "PDF Files (*.pdf)",
+        )
+
+        if filepath:
+            generate_pdf(
+                filepath,
+                self.A, self.B, self.C, self.D,
+                self.r2, self.sse, self.residual_sd,
+                self.LLOQ, self.ULOQ,
+                self.unknown_data_table,
+                self.calibration_table_dict,
+                self.unknown_groups,
+                self.calibration_groups,
+                self.sample_outliers,
+                self.cal_outliers,
+                self.figure,
+                os.path.basename(self.filepath),
+            )
+            self.statusBar().showMessage("PDF report exported.", 5000)
